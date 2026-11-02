@@ -18,23 +18,20 @@ import gzip
 import io
 import json
 import os
-import re
 import struct
 import sys
-import unicodedata
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
-from moteur import analyser_fusion, lire_fichier
+from moteur import analyser_fusion, cle_nom, lire_fichier, trouver_images
 
 # En-tête des fichiers : MAGIC | itérations (uint32) | sel (16 o) | nonce (12 o) | données chiffrées
 # Les deux fichiers partagent le même sel, donc la même clé : un seul mot de passe pour les deux.
 MAGIC = b"RGB1"
 MAGIC_IMAGES = b"RGI1"
 ITERATIONS = 600_000
-EXTENSIONS_IMAGES = (".jpg", ".jpeg", ".png", ".webp")
 LARGEUR_VIGNETTE = 320
 
 
@@ -61,27 +58,6 @@ def sel_reutilisable(chemin, mot_de_passe):
 def chiffrer(donnees, cle, sel, magic=MAGIC):
     nonce = os.urandom(12)
     return magic + struct.pack(">I", ITERATIONS) + sel + nonce + AESGCM(cle).encrypt(nonce, donnees, magic)
-
-
-def cle_nom(nom):
-    # Rapproche « Titre.fr.fr » / « Titre.fr » / « Titre  (720p) » / accents différents d'un même nom.
-    nom = re.sub(r"(\.[a-z]{2,3})+$", "", nom)
-    nom = unicodedata.normalize("NFKD", nom).encode("ascii", "ignore").decode().lower()
-    return re.sub(r"[^a-z0-9]", "", nom)
-
-
-def trouver_images(racine):
-    images = {}
-    for annee in sorted(os.listdir(racine)) if os.path.isdir(racine) else []:
-        dossier = os.path.join(racine, annee)
-        if not (re.fullmatch(r"\d{4}", annee) and os.path.isdir(dossier)):
-            continue
-        for chemin, _, fichiers in os.walk(dossier):
-            for f in sorted(fichiers):
-                nom, ext = os.path.splitext(f)
-                if ext.lower() in EXTENSIONS_IMAGES:
-                    images.setdefault(cle_nom(nom), os.path.join(chemin, f))
-    return images
 
 
 def faire_vignette(chemin):

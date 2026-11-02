@@ -7,13 +7,14 @@ import sys
 import threading
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
-from moteur import Index
+from moteur import Index, cle_nom, trouver_images
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 NOM_FUSION = "FUSION_GLOBALE_SRT.txt"
 NOM_LIENS = "liens.json"
+TYPES_IMAGES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
 CONFIG = os.path.join(os.path.expanduser("~"), ".recherche_globale.json")
 
 
@@ -60,6 +61,8 @@ class Etat:
         self.index = None
         self.fichier = None
         self.liens = {}
+        self.images = {}          # titre -> chemin de l'image de la vidéo
+        self.dossier_images = None
         self.chargement = False
         self.erreur = None
         self.verrou = threading.Lock()
@@ -76,8 +79,11 @@ class Etat:
                     with open(p, "r", encoding="utf-8") as f:
                         liens = json.load(f)
                     break
+            trouvees = trouver_images(self.dossier_images or os.path.dirname(chemin))
+            images = {v["titre"]: trouvees[cle_nom(v["titre"])] for v in index.videos
+                      if cle_nom(v["titre"]) in trouvees}
             with self.verrou:
-                self.index, self.fichier, self.liens = index, chemin, liens
+                self.index, self.fichier, self.liens, self.images = index, chemin, liens, images
             cfg = lire_config()
             cfg["fichier"] = chemin
             ecrire_config(cfg)
@@ -100,6 +106,7 @@ class Etat:
                 "phrases": idx.nb_blocs() if idx else 0,
                 "annees": idx.annees() if idx else [],
                 "liens": len(self.liens),
+                "images": len(self.images),
             }
 
 
@@ -148,8 +155,27 @@ class Gestionnaire(BaseHTTPRequestHandler):
             self.wfile.write(corps)
         elif chemin == "/api/etat":
             self._json(ETAT.resume())
+        elif chemin == "/api/image":
+            self._image(parse_qs(urlsplit(self.path).query).get("t", [""])[0])
         else:
             self._json({"erreur": "Introuvable"}, 404)
+
+    def _image(self, titre):
+        # Seules les images associées à une vidéo de la base sont servies : aucun autre fichier du disque.
+        chemin = ETAT.images.get(titre)
+        if not chemin:
+            return self._json({"erreur": "Introuvable"}, 404)
+        try:
+            with open(chemin, "rb") as f:
+                corps = f.read()
+        except OSError:
+            return self._json({"erreur": "Introuvable"}, 404)
+        self.send_response(200)
+        self.send_header("Content-Type", TYPES_IMAGES.get(os.path.splitext(chemin)[1].lower(), "application/octet-stream"))
+        self.send_header("Content-Length", str(len(corps)))
+        self.send_header("Cache-Control", "max-age=3600")
+        self.end_headers()
+        self.wfile.write(corps)
 
     def do_POST(self):
         if not self._origine_ok():
@@ -178,6 +204,7 @@ class Gestionnaire(BaseHTTPRequestHandler):
             for r in res["resultats"]:
                 lien = ETAT.liens.get(r["titre"])
                 r["lien"] = lien if isinstance(lien, str) and lien.startswith(("https://", "http://")) else None
+                r["image"] = r["titre"] in ETAT.images
             return self._json(res)
         self._json({"erreur": "Introuvable"}, 404)
 
@@ -195,7 +222,10 @@ def main():
     ap.add_argument("fichier", nargs="?", help=f"chemin du fichier de fusion (par défaut : {NOM_FUSION})")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--sans-navigateur", action="store_true", help="ne pas ouvrir le navigateur")
+    ap.add_argument("--images", help="dossier contenant les sous-dossiers année avec les images des vidéos "
+                                     "(par défaut : celui du fichier de fusion)")
     args = ap.parse_args()
+    ETAT.dossier_images = args.images
 
     chemin = trouver_fusion(args.fichier)
     if chemin:

@@ -1,10 +1,34 @@
 """Lecture du fichier de fusion SRT et recherche plein texte."""
+import os
 import re
 import unicodedata
 from bisect import bisect_right
 
 MARQUEUR = "=== FICHIER SOURCE : "
 BRUIT = re.compile(r"\(Transcrit par TurboScribe\.ai\.[^)]*\)\s*")
+EXTENSIONS_IMAGES = (".jpg", ".jpeg", ".png", ".webp")
+
+
+def cle_nom(nom):
+    # Rapproche « Titre.fr.fr » / « Titre.fr » / « Titre  (720p) » / accents différents d'un même nom.
+    nom = re.sub(r"(\.[a-z]{2,3})+$", "", nom)
+    nom = unicodedata.normalize("NFKD", nom).encode("ascii", "ignore").decode().lower()
+    return re.sub(r"[^a-z0-9]", "", nom)
+
+
+def trouver_images(racine):
+    """Images des vidéos dans les sous-dossiers « année » de racine : {cle_nom: chemin}."""
+    images = {}
+    for annee in sorted(os.listdir(racine)) if os.path.isdir(racine) else []:
+        dossier = os.path.join(racine, annee)
+        if not (re.fullmatch(r"\d{4}", annee) and os.path.isdir(dossier)):
+            continue
+        for chemin, _, fichiers in os.walk(dossier):
+            for f in sorted(fichiers):
+                nom, ext = os.path.splitext(f)
+                if ext.lower() in EXTENSIONS_IMAGES:
+                    images.setdefault(cle_nom(nom), os.path.join(chemin, f))
+    return images
 
 
 class _SansAccents(dict):

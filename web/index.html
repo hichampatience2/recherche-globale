@@ -32,7 +32,9 @@
   .pill.on { border-color:var(--accent); color:var(--accent); background:var(--mark); }
   .aide { color:var(--muted); font-size:.82rem; margin-top:8px; }
   #stats { color:var(--muted); margin:8px 0 14px; }
-  .res { background:var(--panel); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:6px; padding:12px 14px; margin-bottom:12px; }
+  .res { display:flex; gap:16px; background:var(--panel); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:6px; padding:12px 14px; margin-bottom:12px; }
+  .res-corps { flex:1; min-width:0; }
+  .vignette { width:200px; aspect-ratio:16/9; object-fit:cover; flex-shrink:0; align-self:flex-start; border-radius:6px; border:1px solid var(--border); background:var(--hover); }
   .res-tete { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
   .res-titre { font-weight:600; overflow-wrap:anywhere; }
   .badge { color:var(--accent); font-size:.8rem; border:1px solid var(--accent); border-radius:4px; padding:0 6px; margin-right:6px; }
@@ -46,7 +48,7 @@
   .erreur { color:#ff6b6b; }
   a { color:var(--accent); }
   #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--accent); color:var(--on-accent); padding:8px 16px; border-radius:6px; opacity:0; transition:opacity .2s; pointer-events:none; }
-  @media (max-width:600px) { .res-tete { flex-direction:column; } }
+  @media (max-width:600px) { .res-tete { flex-direction:column; } .vignette { width:96px; } }
 </style>
 </head>
 <body>
@@ -109,7 +111,7 @@ async function etat() {
     return;
   }
   $('panel-charger').hidden = true; $('panel-recherche').hidden = false;
-  $('info').textContent = `${e.videos} vidéos · ${e.phrases.toLocaleString('fr-FR')} phrases` + (e.liens ? ` · ${e.liens} liens` : '') + ` · v${e.version}`;
+  $('info').textContent = `${e.videos} vidéos · ${e.phrases.toLocaleString('fr-FR')} phrases` + (e.images ? ` · ${e.images} images` : '') + (e.liens ? ` · ${e.liens} liens` : '') + ` · v${e.version}`;
   $('info').title = e.fichier;
   $('annees').innerHTML = e.annees.map(a => `<span class="pill on" data-a="${esc(a)}" onclick="this.classList.toggle('on')">${esc(a)}</span>`).join('');
   $('termes').focus();
@@ -157,6 +159,7 @@ async function rechercher() {
     $('stats').textContent = `${d.total} passage(s) dans ${d.videos} vidéo(s)${plus}`;
     $('resultats').innerHTML = d.resultats.length ? d.resultats.map(r => `
       <div class="res">
+        <div class="res-corps">
         <div class="res-tete">
           <div class="res-titre"><span class="badge">${esc(r.temps.split(',')[0])}</span>${esc(r.titre)}</div>
           <div class="actions">
@@ -165,6 +168,8 @@ async function rechercher() {
           </div>
         </div>
         <div class="ctx">${r.contexte.map(c => `<div class="${c.trouve ? 'hit' : ''}"><span class="t">${esc(c.temps.split(',')[0])}</span>${c.trouve ? surligner(c.texte, c.surlignage) : esc(c.texte)}</div>`).join('')}</div>
+        </div>
+        ${r.image ? `<img class="vignette" alt="" loading="lazy" src="/api/image?t=${encodeURIComponent(r.titre)}" onerror="this.remove()">` : ''}
       </div>`).join('') : '<div class="vide">Aucun résultat.</div>';
   } catch (e) { $('stats').innerHTML = `<span class="erreur">${esc(e.message)}</span>`; }
 }

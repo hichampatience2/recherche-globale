@@ -96,7 +96,9 @@ Si la base n'est pas à côté du programme, la page vous demande son chemin ; i
 RechercheGlobale  /chemin/vers/FUSION_GLOBALE_SRT.txt
 ```
 
-Options : `--port 8765` pour choisir le port, `--sans-navigateur` pour ne pas ouvrir le navigateur automatiquement.
+**Images des vidéos** : si le dossier de la fusion contient des sous-dossiers année (`2019`, `2020`…) avec, pour chaque vidéo, une image du même nom (`.jpg`, `.png`, `.webp`), elle s'affiche à droite des résultats. Autre emplacement : `--images D:\MesVideos`.
+
+Options : `--port 8765` pour choisir le port, `--sans-navigateur` pour ne pas ouvrir le navigateur automatiquement, `--images` pour le dossier des images.
 
 Astuce : une recherche peut être ouverte directement par son adresse, par exemple `http://127.0.0.1:8765/?q=messie`.
 

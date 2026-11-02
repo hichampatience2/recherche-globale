@@ -3,9 +3,22 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from moteur import Index  # noqa: E402
+from moteur import Index, cle_nom, trouver_images  # noqa: E402
 
 EXEMPLE = os.path.join(os.path.dirname(__file__), "..", "exemple", "FUSION_EXEMPLE.txt")
+
+
+class TestImages(unittest.TestCase):
+    def test_rapprochement_des_noms(self):
+        self.assertEqual(cle_nom("20260605 - Titre_.fr.fr"), cle_nom("20260605 - Titre_.fr"))
+        self.assertEqual(cle_nom("20240720 - Ahmed  Moualek - Été !"), cle_nom("20240720 - Ahmed Moualek - Ete"))
+        self.assertNotEqual(cle_nom("20240720 - Vidéo une"), cle_nom("20240721 - Vidéo une"))
+
+    def test_images_des_dossiers_annee(self):
+        images = trouver_images(os.path.dirname(EXEMPLE))
+        chemin = images.get(cle_nom("20190322 - Exemple de vidéo une"))
+        self.assertIsNotNone(chemin)
+        self.assertTrue(chemin.endswith(".jpg"))
 
 
 class TestMoteur(unittest.TestCase):
