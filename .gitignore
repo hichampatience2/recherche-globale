@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+build/
+dist/
+
+# La base de transcriptions et les liens ne sont pas versionnés : ils sont publiés à part.
+FUSION_GLOBALE_SRT.txt
+liens.json

@@ -1,0 +1,24 @@
+
+
+=== FICHIER SOURCE : 20190322 - Exemple de vidéo une.srt ===
+1
+00:00:01,750 --> 00:00:05,990
+(Transcrit par TurboScribe.ai. Passez à Illimité pour supprimer ce message.) Bonjour à tous, aujourd'hui on parle de la prière.
+
+2
+00:00:05,990 --> 00:00:13,070
+La prière du vendredi rassemble des milliers de personnes.
+
+3
+00:00:13,070 --> 00:00:19,010
+Chacun doit respecter l'autre, ni plus ni moins.
+
+
+=== FICHIER SOURCE : 20240706 - Exemple de vidéo deux.fr.srt ===
+1
+00:01:00,000 --> 00:01:04,000
+Le Coran et la Bible nous informent.
+
+2
+00:01:04,000 --> 00:01:09,500
+Une ÉCOLE de pensée, des écoliers attentifs.

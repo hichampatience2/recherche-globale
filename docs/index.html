@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Recherche Globale</title>
+<style>
+  :root { --bg:#121212; --panel:#1e1e1e; --hover:#2a2a2a; --accent:#00f2fe; --text:#ffffff; --muted:#aaaaaa; --border:#333333; --mark:rgba(0,242,254,.25); --on-accent:#000000; }
+  :root[data-theme="light"] { --bg:#f4f5f7; --panel:#ffffff; --hover:#eef0f3; --accent:#007a8a; --text:#16181d; --muted:#5d6470; --border:#d7dbe1; --mark:rgba(0,122,138,.18); --on-accent:#ffffff; }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) { --bg:#f4f5f7; --panel:#ffffff; --hover:#eef0f3; --accent:#007a8a; --text:#16181d; --muted:#5d6470; --border:#d7dbe1; --mark:rgba(0,122,138,.18); --on-accent:#ffffff; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:1100px; margin:0 auto; padding:24px 16px 60px; }
+  header { display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+  h1 { margin:0; font-size:1.5rem; }
+  h1 span { color:var(--accent); }
+  .info { color:var(--muted); font-size:.85rem; }
+  .info a { color:var(--muted); margin-left:8px; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:16px; }
+  .ligne { display:flex; gap:10px; flex-wrap:wrap; }
+  input[type=text], input[type=password] { flex:1; min-width:0; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:12px 14px; font-size:1rem; }
+  input:focus { outline:none; border-color:var(--accent); }
+  button { background:var(--accent); color:var(--on-accent); border:0; border-radius:6px; padding:12px 20px; font-weight:600; font-size:1rem; cursor:pointer; min-height:44px; }
+  button:disabled { opacity:.5; cursor:wait; }
+  button.sec { background:transparent; color:var(--muted); border:1px solid var(--border); font-weight:400; padding:6px 12px; min-height:32px; font-size:.85rem; }
+  button.sec:hover { color:var(--accent); border-color:var(--accent); }
+  .options { display:flex; gap:18px; flex-wrap:wrap; margin-top:12px; color:var(--muted); font-size:.9rem; }
+  .options label { cursor:pointer; display:flex; align-items:center; gap:6px; }
+  .annees { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:14px; padding-top:14px; border-top:1px solid var(--border); }
+  .annees .titre { color:var(--muted); font-size:.85rem; margin-right:4px; }
+  .pill { border:1px solid var(--border); border-radius:20px; padding:4px 12px; font-size:.85rem; cursor:pointer; user-select:none; color:var(--muted); }
+  .pill.on { border-color:var(--accent); color:var(--accent); background:var(--mark); }
+  .connexion { max-width:440px; margin:60px auto; text-align:center; }
+  .connexion p { color:var(--muted); }
+  .connexion .ligne { margin:18px 0 10px; }
+  .barre { height:6px; background:var(--border); border-radius:3px; overflow:hidden; margin:14px 0 6px; }
+  .barre div { height:100%; width:0; background:var(--accent); }
+  #stats { color:var(--muted); margin:8px 0 14px; }
+  .res { background:var(--panel); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:6px; padding:12px 14px; margin-bottom:12px; }
+  .res-tete { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+  .res-titre { font-weight:600; overflow-wrap:anywhere; }
+  .badge { color:var(--accent); font-size:.8rem; border:1px solid var(--accent); border-radius:4px; padding:0 6px; margin-right:6px; }
+  .actions { display:flex; gap:6px; flex-shrink:0; }
+  .ctx { font-size:.92rem; color:var(--muted); }
+  .ctx div { padding:2px 0; }
+  .ctx .t { font-family:ui-monospace,Consolas,monospace; font-size:.8rem; margin-right:8px; opacity:.8; }
+  .ctx .hit { color:var(--text); }
+  mark { background:var(--mark); color:var(--accent); border-radius:3px; padding:0 2px; font-weight:600; }
+  .vide { text-align:center; color:var(--muted); padding:40px 10px; }
+  .erreur { color:#ff6b6b; }
+  #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--accent); color:var(--on-accent); padding:8px 16px; border-radius:6px; opacity:0; transition:opacity .2s; pointer-events:none; }
+  @media (max-width:600px) { .res-tete { flex-direction:column; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🔎 Recherche <span>Globale</span></h1>
+    <div class="info" id="info"></div>
+  </header>
+
+  <div class="panel connexion" id="ecran-connexion" hidden>
+    <h2 style="margin-top:0">🔒 Accès réservé</h2>
+    <p>Entrez le mot de passe qui vous a été communiqué.</p>
+    <div class="ligne">
+      <input type="password" id="mdp" placeholder="Mot de passe" autocomplete="current-password">
+      <button id="btn-entrer" onclick="entrer()">Entrer</button>
+    </div>
+    <div class="options" style="justify-content:center">
+      <label><input type="checkbox" id="souvenir" checked> Se souvenir de moi sur cet ordinateur</label>
+    </div>
+    <div class="erreur" id="err-connexion" style="margin-top:10px"></div>
+  </div>
+
+  <div class="panel connexion" id="ecran-chargement" hidden>
+    <div id="etape">Téléchargement de la base…</div>
+    <div class="barre"><div id="progression"></div></div>
+    <div class="info" id="detail"></div>
+  </div>
+
+  <div id="ecran-recherche" hidden>
+    <div class="panel">
+      <div class="ligne">
+        <input type="text" id="termes" placeholder="Mots ou expressions, séparés par des virgules">
+        <button onclick="rechercher()">Rechercher</button>
+      </div>
+      <div class="options">
+        <label><input type="checkbox" id="accents" checked> Ignorer les accents</label>
+        <label><input type="checkbox" id="motentier"> Mot entier</label>
+      </div>
+      <div class="annees">
+        <span class="titre">📅 Années :</span>
+        <span id="annees" style="display:contents"></span>
+        <button class="sec" onclick="toutes(true)">Tout</button>
+        <button class="sec" onclick="toutes(false)">Aucun</button>
+      </div>
+    </div>
+    <div id="stats"></div>
+    <div id="resultats"></div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script src="moteur.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const esc = Moteur.echapper;
+const CLE_STOCKAGE = 'recherche-globale-cle';
+let fichier = null;   // en-tête et données chiffrées
+let base = null;      // base déchiffrée et indexée
+
+function ecran(nom) {
+  for (const e of ['connexion', 'chargement', 'recherche']) $('ecran-' + e).hidden = e !== nom;
+}
+function progression(etape, pct, detail) {
+  $('etape').textContent = etape;
+  $('progression').style.width = pct + '%';
+  $('detail').textContent = detail || '';
+}
+const hex = b => Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+const b64 = b => btoa(String.fromCharCode(...b));
+const deb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const pause = () => new Promise(r => setTimeout(r, 30));
+
+async function telecharger() {
+  ecran('chargement');
+  const rep = await fetch('donnees.bin', { cache: 'no-cache' });
+  if (!rep.ok) throw new Error('Base introuvable sur le site (' + rep.status + ').');
+  const total = +rep.headers.get('Content-Length') || 0;
+  const lecteur = rep.body.getReader();
+  const morceaux = []; let recu = 0;
+  for (;;) {
+    const { done, value } = await lecteur.read();
+    if (done) break;
+    morceaux.push(value); recu += value.length;
+    progression('Téléchargement de la base…', total ? Math.min(100, recu / total * 100) : 50,
+                (recu / 1e6).toFixed(1) + ' Mo' + (total ? ' / ' + (total / 1e6).toFixed(1) + ' Mo' : ''));
+  }
+  const tout = new Uint8Array(recu); let p = 0;
+  for (const m of morceaux) { tout.set(m, p); p += m.length; }
+  fichier = Moteur.lireEntete(tout);
+}
+
+function cleMemorisee() {
+  try {
+    const m = JSON.parse(localStorage.getItem(CLE_STOCKAGE) || 'null');
+    return m && m.sel === hex(fichier.sel) ? m.cle : null;
+  } catch { return null; }
+}
+
+// Le lien partagé contient le mot de passe après « #cle= » : cette partie n'est jamais envoyée au serveur.
+function cleDuLien() {
+  const m = location.hash.match(/(?:^#|&)cle=([^&]*)/);
+  if (!m) return null;
+  history.replaceState(null, '', location.pathname + location.search);
+  try { return decodeURIComponent(m[1]); } catch { return null; }
+}
+
+async function entrerAvecLien(mdp) {
+  progression('Ouverture de la base…', 100);
+  const cle = await Moteur.deriverCle(fichier, mdp, true);
+  let donnees;
+  try { donnees = await Moteur.ouvrir(fichier, cle); } catch { return false; }
+  await memoriser(cle);
+  await afficher(donnees);
+  return true;
+}
+
+async function memoriser(cle) {
+  const brute = new Uint8Array(await crypto.subtle.exportKey('raw', cle));
+  try { localStorage.setItem(CLE_STOCKAGE, JSON.stringify({ sel: hex(fichier.sel), cle: b64(brute) })); } catch {}
+}
+
+async function demarrer() {
+  const cleLien = cleDuLien();
+  try {
+    await telecharger();
+    if (cleLien) {
+      if (await entrerAvecLien(cleLien)) return;
+      ecran('connexion');
+      $('err-connexion').textContent = 'Lien invalide ou expiré. Demandez le nouveau lien, ou entrez le mot de passe.';
+      return;
+    }
+    const memo = cleMemorisee();
+    if (memo) {
+      let donnees = null;
+      try {
+        progression('Ouverture de la base…', 100);
+        const cle = await crypto.subtle.importKey('raw', deb64(memo), 'AES-GCM', false, ['decrypt']);
+        donnees = await Moteur.ouvrir(fichier, cle);
+      } catch { oublier(false); }
+      if (donnees) return afficher(donnees);
+    }
+    ecran('connexion'); $('mdp').focus();
+  } catch (e) {
+    ecran('chargement'); progression('', 0);
+    $('etape').innerHTML = `<span class="erreur">${esc(e.message)}</span>`;
+  }
+}
+
+async function entrer() {
+  const mdp = $('mdp').value;
+  if (!mdp) return;
+  $('err-connexion').textContent = ''; $('btn-entrer').disabled = true;
+  try {
+    const souvenir = $('souvenir').checked;
+    const cle = await Moteur.deriverCle(fichier, mdp, souvenir);
+    let donnees;
+    try { donnees = await Moteur.ouvrir(fichier, cle); }
+    catch { throw new Error('Mot de passe incorrect.'); }
+    if (souvenir) await memoriser(cle);
+    $('mdp').value = '';
+    await afficher(donnees);
+  } catch (e) {
+    $('err-connexion').textContent = e.message;
+  } finally { $('btn-entrer').disabled = false; }
+}
+
+function oublier(recharger = true) {
+  try { localStorage.removeItem(CLE_STOCKAGE); } catch {}
+  if (recharger) location.reload();
+}
+
+async function afficher(donnees) {
+  ecran('chargement'); progression('Préparation de la recherche…', 100);
+  await pause();
+  base = Moteur.preparer(donnees);
+  fichier = null;
+  $('annees').innerHTML = base.annees.map(a => `<span class="pill on" data-a="${esc(a)}" onclick="this.classList.toggle('on')">${esc(a)}</span>`).join('');
+  $('info').innerHTML = `${base.videos.length} vidéos · ${base.refs.length.toLocaleString('fr-FR')} phrases · mise à jour ${esc(base.genere)}`
+    + `<a href="#" onclick="oublier(); return false;">Se déconnecter</a>`;
+  ecran('recherche');
+  $('termes').focus();
+  const q = new URLSearchParams(location.search).get('q');
+  if (q) { $('termes').value = q; rechercher(); }
+}
+
+function toutes(on) { document.querySelectorAll('.pill').forEach(p => p.classList.toggle('on', on)); }
+
+function secondes(t) { const [h, m, s] = t.split(':').map(Number); return h * 3600 + m * 60 + s; }
+function lienHorodate(url, temps) { return url + (url.includes('?') ? '&' : '?') + 't=' + secondes(temps); }
+
+function rechercher() {
+  const termes = $('termes').value.trim();
+  if (!termes) return;
+  const pills = [...document.querySelectorAll('.pill')];
+  const annees = pills.filter(p => p.classList.contains('on')).map(p => p.dataset.a);
+  if (!annees.length) { $('stats').textContent = 'Sélectionnez au moins une année.'; $('resultats').innerHTML = ''; return; }
+  $('stats').textContent = 'Recherche…';
+  setTimeout(() => {
+    const d = Moteur.rechercher(base, termes.split(','), {
+      annees: annees.length === pills.length ? null : annees,
+      motEntier: $('motentier').checked, accents: $('accents').checked,
+    });
+    const plus = d.total > d.resultats.length ? ` — ${d.resultats.length} premiers affichés` : '';
+    $('stats').textContent = `${d.total} passage(s) dans ${d.videos} vidéo(s)${plus}`;
+    $('resultats').innerHTML = d.resultats.length ? d.resultats.map(r => `
+      <div class="res">
+        <div class="res-tete">
+          <div class="res-titre"><span class="badge">${esc(r.temps)}</span>${esc(r.titre)}</div>
+          <div class="actions">
+            ${r.lien ? `<a href="${esc(lienHorodate(r.lien, r.temps))}" target="_blank" rel="noopener"><button class="sec">▶ Voir</button></a>` : ''}
+            <button class="sec" data-copie="${esc(r.titre + ' — ' + r.temps)}" onclick="copier(this.dataset.copie)">📋 Copier</button>
+          </div>
+        </div>
+        <div class="ctx">${r.contexte.map(c => `<div class="${c.trouve ? 'hit' : ''}"><span class="t">${esc(c.temps)}</span>${c.html}</div>`).join('')}</div>
+      </div>`).join('') : '<div class="vide">Aucun résultat.</div>';
+  }, 10);
+}
+
+function copier(texte) {
+  navigator.clipboard.writeText(texte).then(() => {
+    const t = $('toast'); t.textContent = 'Copié'; t.style.opacity = 1;
+    setTimeout(() => t.style.opacity = 0, 1200);
+  });
+}
+
+$('termes').addEventListener('keydown', e => { if (e.key === 'Enter') rechercher(); });
+$('mdp').addEventListener('keydown', e => { if (e.key === 'Enter') entrer(); });
+// Nouveau lien collé dans un onglet déjà ouvert : on recharge pour le prendre en compte.
+window.addEventListener('hashchange', () => { if (/cle=/.test(location.hash)) location.reload(); });
+demarrer();
+</script>
+</body>
+</html>

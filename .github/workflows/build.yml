@@ -1,0 +1,72 @@
+name: Compilation
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            nom: RechercheGlobale-Windows
+          - os: macos-latest
+            nom: RechercheGlobale-macOS
+          - os: ubuntu-latest
+            nom: RechercheGlobale-Linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Compilation
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-build.txt
+          pyinstaller --noconfirm --clean recherche_globale.spec
+
+      - name: Archive
+        shell: bash
+        run: |
+          mkdir -p "paquet/${{ matrix.nom }}"
+          cp dist/RechercheGlobale* "paquet/${{ matrix.nom }}/"
+          cp README.md LICENSE "paquet/${{ matrix.nom }}/"
+          cp exemple/FUSION_EXEMPLE.txt exemple/liens.exemple.json "paquet/${{ matrix.nom }}/"
+          cd paquet
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            7z a "../${{ matrix.nom }}.zip" "${{ matrix.nom }}"
+          else
+            zip -r "../${{ matrix.nom }}.zip" "${{ matrix.nom }}"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.nom }}
+          path: ${{ matrix.nom }}.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artefacts
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artefacts/*.zip
+          generate_release_notes: true
