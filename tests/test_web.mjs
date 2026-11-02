@@ -51,6 +51,16 @@ try {
   assert.ok(r.contexte.find(c => c.trouve).html.includes('<mark>ÉCOLE</mark>'), 'surlignage sur le texte original');
   assert.equal(r.lien, 'https://odysee.com/@chaine/video-exemple');
 
+  // Images : même clé que la base, retrouvées par nom de vidéo (exemple/2019/<titre>.jpg)
+  const fichier = Moteur.lireEntete(new Uint8Array(readFileSync(sortie)));
+  const cle = await Moteur.deriverCle(fichier, 'motdepasse-test', false);
+  const images = await Moteur.ouvrirVignettes(new Uint8Array(readFileSync(join(tmp, 'vignettes.bin'))), cle, fichier.sel);
+  assert.deepEqual([...images.keys()], ['20190322 - Exemple de vidéo une']);
+  const webp = new Uint8Array(await images.get('20190322 - Exemple de vidéo une').arrayBuffer());
+  assert.equal(new TextDecoder().decode(webp.subarray(8, 12)), 'WEBP', 'vignette au format WebP');
+  await assert.rejects(Moteur.ouvrirVignettes(new Uint8Array(readFileSync(join(tmp, 'vignettes.bin'))), cle, new Uint8Array(16)),
+                       'images refusées si elles viennent d\'un autre mot de passe');
+
   console.log('Tous les tests du moteur web passent.');
 } finally {
   rmSync(tmp, { recursive: true, force: true });

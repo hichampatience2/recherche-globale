@@ -39,7 +39,9 @@
   .barre { height:6px; background:var(--border); border-radius:3px; overflow:hidden; margin:14px 0 6px; }
   .barre div { height:100%; width:0; background:var(--accent); }
   #stats { color:var(--muted); margin:8px 0 14px; }
-  .res { background:var(--panel); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:6px; padding:12px 14px; margin-bottom:12px; }
+  .res { display:flex; gap:16px; background:var(--panel); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:6px; padding:12px 14px; margin-bottom:12px; }
+  .res-corps { flex:1; min-width:0; }
+  .vignette { width:200px; aspect-ratio:16/9; object-fit:cover; flex-shrink:0; align-self:flex-start; border-radius:6px; border:1px solid var(--border); background:var(--hover); }
   .res-tete { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
   .res-titre { font-weight:600; overflow-wrap:anywhere; }
   .badge { color:var(--accent); font-size:.8rem; border:1px solid var(--accent); border-radius:4px; padding:0 6px; margin-right:6px; }
@@ -52,7 +54,7 @@
   .vide { text-align:center; color:var(--muted); padding:40px 10px; }
   .erreur { color:#ff6b6b; }
   #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--accent); color:var(--on-accent); padding:8px 16px; border-radius:6px; opacity:0; transition:opacity .2s; pointer-events:none; }
-  @media (max-width:600px) { .res-tete { flex-direction:column; } }
+  @media (max-width:600px) { .res-tete { flex-direction:column; } .vignette { width:96px; } }
 </style>
 </head>
 <body>
@@ -165,7 +167,7 @@ async function entrerAvecLien(mdp) {
   let donnees;
   try { donnees = await Moteur.ouvrir(fichier, cle); } catch { return false; }
   await memoriser(cle);
-  await afficher(donnees);
+  await afficher(donnees, cle);
   return true;
 }
 
@@ -186,13 +188,13 @@ async function demarrer() {
     }
     const memo = cleMemorisee();
     if (memo) {
-      let donnees = null;
+      let donnees = null, cle = null;
       try {
         progression('Ouverture de la base…', 100);
-        const cle = await crypto.subtle.importKey('raw', deb64(memo), 'AES-GCM', false, ['decrypt']);
+        cle = await crypto.subtle.importKey('raw', deb64(memo), 'AES-GCM', false, ['decrypt']);
         donnees = await Moteur.ouvrir(fichier, cle);
       } catch { oublier(false); }
-      if (donnees) return afficher(donnees);
+      if (donnees) return afficher(donnees, cle);
     }
     ecran('connexion'); $('mdp').focus();
   } catch (e) {
@@ -213,7 +215,7 @@ async function entrer() {
     catch { throw new Error('Mot de passe incorrect.'); }
     if (souvenir) await memoriser(cle);
     $('mdp').value = '';
-    await afficher(donnees);
+    await afficher(donnees, cle);
   } catch (e) {
     $('err-connexion').textContent = e.message;
   } finally { $('btn-entrer').disabled = false; }
@@ -224,11 +226,13 @@ function oublier(recharger = true) {
   if (recharger) location.reload();
 }
 
-async function afficher(donnees) {
+async function afficher(donnees, cle) {
   ecran('chargement'); progression('Préparation de la recherche…', 100);
   await pause();
   base = Moteur.preparer(donnees);
+  const sel = fichier.sel;
   fichier = null;
+  chargerVignettes(cle, sel);
   $('annees').innerHTML = base.annees.map(a => `<span class="pill on" data-a="${esc(a)}" onclick="this.classList.toggle('on')">${esc(a)}</span>`).join('');
   $('info').innerHTML = `${base.videos.length} vidéos · ${base.refs.length.toLocaleString('fr-FR')} phrases · mise à jour ${esc(base.genere)}`
     + `<a href="#" onclick="oublier(); return false;">Se déconnecter</a>`;
@@ -236,6 +240,32 @@ async function afficher(donnees) {
   $('termes').focus();
   const q = new URLSearchParams(location.search).get('q');
   if (q) { $('termes').value = q; rechercher(); }
+}
+
+let vignettes = null;          // Map titre -> Blob, une fois déchiffrées
+const urlsVignettes = new Map();
+
+async function chargerVignettes(cle, sel) {
+  try {
+    const rep = await fetch('vignettes.bin', { cache: 'no-cache' });
+    if (!rep.ok) { vignettes = new Map(); return remplirVignettes(); }
+    vignettes = await Moteur.ouvrirVignettes(new Uint8Array(await rep.arrayBuffer()), cle, sel);
+  } catch (e) {
+    console.warn('Images indisponibles :', e);
+    vignettes = new Map();
+  }
+  remplirVignettes();
+}
+
+function remplirVignettes() {
+  for (const img of document.querySelectorAll('img.vignette:not([src])')) {
+    if (!vignettes) continue;
+    const blob = vignettes.get(img.dataset.titre);
+    if (!blob) { img.remove(); continue; }
+    if (!urlsVignettes.has(img.dataset.titre)) urlsVignettes.set(img.dataset.titre, URL.createObjectURL(blob));
+    img.src = urlsVignettes.get(img.dataset.titre);
+    img.hidden = false;
+  }
 }
 
 function toutes(on) { document.querySelectorAll('.pill').forEach(p => p.classList.toggle('on', on)); }
@@ -259,6 +289,7 @@ function rechercher() {
     $('stats').textContent = `${d.total} passage(s) dans ${d.videos} vidéo(s)${plus}`;
     $('resultats').innerHTML = d.resultats.length ? d.resultats.map(r => `
       <div class="res">
+        <div class="res-corps">
         <div class="res-tete">
           <div class="res-titre"><span class="badge">${esc(r.temps)}</span>${esc(r.titre)}</div>
           <div class="actions">
@@ -267,7 +298,10 @@ function rechercher() {
           </div>
         </div>
         <div class="ctx">${r.contexte.map(c => `<div class="${c.trouve ? 'hit' : ''}"><span class="t">${esc(c.temps)}</span>${c.html}</div>`).join('')}</div>
+        </div>
+        <img class="vignette" hidden alt="" loading="lazy" data-titre="${esc(r.titre)}">
       </div>`).join('') : '<div class="vide">Aucun résultat.</div>';
+    remplirVignettes();
   }, 10);
 }
 

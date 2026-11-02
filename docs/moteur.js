@@ -2,12 +2,28 @@
 // Utilisé par index.html (navigateur) et par tests/test_web.mjs (Node.js).
 (function (exports) {
   const MAGIC = new TextEncoder().encode('RGB1');
+  const MAGIC_IMAGES = new TextEncoder().encode('RGI1');
 
   // En-tête : MAGIC | itérations (uint32) | sel (16 o) | nonce (12 o) | données chiffrées
-  function lireEntete(octets) {
-    if (MAGIC.some((x, i) => octets[i] !== x)) throw new Error('Fichier de base invalide.');
+  function lireEntete(octets, magic = MAGIC) {
+    if (magic.some((x, i) => octets[i] !== x)) throw new Error('Fichier de base invalide.');
     const vue = new DataView(octets.buffer, octets.byteOffset, octets.byteLength);
-    return { iterations: vue.getUint32(4), sel: octets.slice(8, 24), nonce: octets.slice(24, 36), chiffre: octets.slice(36) };
+    return { magic, iterations: vue.getUint32(4), sel: octets.slice(8, 24), nonce: octets.slice(24, 36), chiffre: octets.slice(36) };
+  }
+
+  const memeSel = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+
+  // Images des vidéos : chiffrées avec la même clé que la base. Retourne Map titre -> Blob.
+  async function ouvrirVignettes(octets, cle, selBase) {
+    const f = lireEntete(octets, MAGIC_IMAGES);
+    if (!memeSel(f.sel, selBase)) throw new Error('Images préparées avec un autre mot de passe.');
+    const clair = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: f.nonce, additionalData: MAGIC_IMAGES }, cle, f.chiffre));
+    const taille = new DataView(clair.buffer).getUint32(0);
+    const index = JSON.parse(new TextDecoder().decode(clair.subarray(4, 4 + taille)));
+    const debut = 4 + taille, images = new Map();
+    for (const [titre, [pos, lg]] of Object.entries(index.images))
+      images.set(titre, new Blob([clair.subarray(debut + pos, debut + pos + lg)], { type: index.type }));
+    return images;
   }
 
   async function deriverCle(fichier, mdp, exportable) {
@@ -101,5 +117,5 @@
     return { resultats, total, videos: videos.size };
   }
 
-  Object.assign(exports, { lireEntete, deriverCle, ouvrir, preparer, rechercher, echapper });
+  Object.assign(exports, { lireEntete, deriverCle, ouvrir, ouvrirVignettes, preparer, rechercher, echapper });
 })(typeof module !== 'undefined' ? module.exports : (window.Moteur = {}));

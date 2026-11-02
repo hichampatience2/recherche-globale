@@ -48,7 +48,9 @@ ou, avec les liens vers les vidéos :
 python construire_site.py H:\FUSION_GLOBALE_SRT.txt --liens liens.json
 ```
 
-Le script demande le mot de passe (deux fois) et crée `docs/donnees.bin`. Il reste à l'envoyer sur GitHub (`git add docs` puis `git commit` et `git push`) ; le site est à jour une à deux minutes plus tard.
+Le script demande le mot de passe (deux fois) et crée `docs/donnees.bin` (transcriptions) et `docs/vignettes.bin` (images des vidéos, chiffrées avec le même mot de passe). Il reste à les envoyer sur GitHub (`git add docs` puis `git commit` et `git push`) ; le site est à jour une à deux minutes plus tard.
+
+**Images des vidéos** : le script cherche, dans les sous-dossiers année (`2019`, `2020`…) du dossier de la fusion, une image (`.jpg`, `.png`, `.webp`) portant le même nom que la vidéo, la réduit en vignette et l'affiche à droite des résultats. Autre emplacement : `--images D:\MesVideos`. Pour ne publier aucune image : `--sans-images`.
 
 - **Même mot de passe que la fois précédente** : les visiteurs qui ont coché « Se souvenir de moi » restent connectés.
 - **Nouveau mot de passe** : l'ancien lien cesse de fonctionner ; envoyez le nouveau lien aux personnes autorisées. C'est la marche à suivre si l'ancien a circulé trop largement.
