@@ -11,7 +11,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from moteur import Index, cle_nom, trouver_images
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 NOM_FUSION = "FUSION_GLOBALE_SRT.txt"
 NOM_LIENS = "liens.json"
 TYPES_IMAGES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
@@ -188,6 +188,12 @@ class Gestionnaire(BaseHTTPRequestHandler):
                 return self._json({"erreur": "Fichier introuvable."}, 400)
             threading.Thread(target=ETAT.charger, args=(os.path.abspath(chemin),), daemon=True).start()
             return self._json({"ok": True})
+        if chemin_url == "/api/transcription":
+            idx = ETAT.index
+            blocs = idx.transcription(str(data.get("titre", ""))) if idx else None
+            if blocs is None:
+                return self._json({"erreur": "Vidéo introuvable."}, 404)
+            return self._json({"blocs": blocs})
         if chemin_url == "/api/recherche":
             idx = ETAT.index
             if idx is None:

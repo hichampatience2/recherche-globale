@@ -98,6 +98,7 @@ def _fusionner(spans):
 class Index:
     def __init__(self, videos):
         self.videos = videos
+        self._par_titre = {v["titre"]: v for v in videos}
         # Tout le corpus en une seule chaîne (une phrase par ligne) : une recherche = une passe regex.
         self._refs, self._debuts = [], []
         textes, pos = [], 0
@@ -117,6 +118,10 @@ class Index:
 
     def annees(self):
         return sorted({v["annee"] for v in self.videos}, reverse=True)
+
+    def transcription(self, titre):
+        v = self._par_titre.get(titre)
+        return [{"temps": b["temps"], "texte": b["texte"]} for b in v["blocs"]] if v else None
 
     def nb_blocs(self):
         return len(self._refs)
@@ -149,6 +154,6 @@ class Index:
             contexte = [{"temps": blocs[j]["temps"], "texte": blocs[j]["texte"], "trouve": j == bi,
                          "surlignage": _fusionner(trouves[k]) if j == bi else []}
                         for j in range(max(0, bi - 2), min(len(blocs), bi + 3))]
-            resultats.append({"titre": v["titre"], "annee": v["annee"],
+            resultats.append({"titre": v["titre"], "annee": v["annee"], "indice": bi,
                               "temps": blocs[bi]["temps"], "contexte": contexte})
         return {"resultats": resultats, "total": total, "videos": len(videos_touchees)}

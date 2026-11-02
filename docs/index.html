@@ -6,10 +6,10 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Recherche Globale</title>
 <style>
-  :root { --bg:#121212; --panel:#1e1e1e; --hover:#2a2a2a; --accent:#00f2fe; --text:#ffffff; --muted:#aaaaaa; --border:#333333; --mark:rgba(0,242,254,.25); --on-accent:#000000; }
-  :root[data-theme="light"] { --bg:#f4f5f7; --panel:#ffffff; --hover:#eef0f3; --accent:#007a8a; --text:#16181d; --muted:#5d6470; --border:#d7dbe1; --mark:rgba(0,122,138,.18); --on-accent:#ffffff; }
+  :root { --bg:#121212; --panel:#1e1e1e; --hover:#2a2a2a; --accent:#00f2fe; --text:#ffffff; --muted:#aaaaaa; --border:#333333; --mark:rgba(0,242,254,.25); --on-accent:#000000; color-scheme:dark; }
+  :root[data-theme="light"] { --bg:#f4f5f7; --panel:#ffffff; --hover:#eef0f3; --accent:#007a8a; --text:#16181d; --muted:#5d6470; --border:#d7dbe1; --mark:rgba(0,122,138,.18); --on-accent:#ffffff; color-scheme:light; }
   @media (prefers-color-scheme: light) {
-    :root:not([data-theme="dark"]) { --bg:#f4f5f7; --panel:#ffffff; --hover:#eef0f3; --accent:#007a8a; --text:#16181d; --muted:#5d6470; --border:#d7dbe1; --mark:rgba(0,122,138,.18); --on-accent:#ffffff; }
+    :root:not([data-theme="dark"]) { --bg:#f4f5f7; --panel:#ffffff; --hover:#eef0f3; --accent:#007a8a; --text:#16181d; --muted:#5d6470; --border:#d7dbe1; --mark:rgba(0,122,138,.18); --on-accent:#ffffff; color-scheme:light; }
   }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
@@ -53,6 +53,18 @@
   mark { background:var(--mark); color:var(--accent); border-radius:3px; padding:0 2px; font-weight:600; }
   .vide { text-align:center; color:var(--muted); padding:40px 10px; }
   .erreur { color:#ff6b6b; }
+  .etendre { display:block; background:none; border:0; color:var(--muted); font-size:.8rem; font-weight:400; padding:2px 0; min-height:0; cursor:pointer; }
+  .etendre:hover { color:var(--accent); }
+  .etendre[hidden] { display:none; }
+  .lecteur { position:fixed; inset:0; z-index:10; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; padding:16px; }
+  .lecteur[hidden] { display:none; }
+  .lecteur-boite { background:var(--panel); border:1px solid var(--border); border-radius:8px; width:100%; max-width:900px; height:88vh; display:flex; flex-direction:column; }
+  .lecteur-tete { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:14px 16px; border-bottom:1px solid var(--border); }
+  .lecteur-titre { font-weight:600; overflow-wrap:anywhere; }
+  .lecteur-texte { overflow-y:auto; padding:10px 16px 40px; color:var(--muted); font-size:.95rem; }
+  .lecteur-texte div { padding:3px 6px; border-radius:4px; }
+  .lecteur-texte .t { font-family:ui-monospace,Consolas,monospace; font-size:.8rem; margin-right:10px; opacity:.8; }
+  .lecteur-texte .hit { color:var(--text); background:var(--hover); }
   #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--accent); color:var(--on-accent); padding:8px 16px; border-radius:6px; opacity:0; transition:opacity .2s; pointer-events:none; }
   @media (max-width:600px) { .res-tete { flex-direction:column; } .vignette { width:96px; } }
 </style>
@@ -102,6 +114,15 @@
     </div>
     <div id="stats"></div>
     <div id="resultats"></div>
+  </div>
+</div>
+<div class="lecteur" id="lecteur" hidden onclick="if (event.target === this) fermerLecteur()">
+  <div class="lecteur-boite" role="dialog" aria-modal="true" aria-labelledby="lecteur-titre">
+    <div class="lecteur-tete">
+      <div class="lecteur-titre" id="lecteur-titre"></div>
+      <button class="sec" onclick="fermerLecteur()">✕ Fermer</button>
+    </div>
+    <div class="lecteur-texte" id="lecteur-texte"></div>
   </div>
 </div>
 <div id="toast"></div>
@@ -287,23 +308,76 @@ function rechercher() {
     });
     const plus = d.total > d.resultats.length ? ` — ${d.resultats.length} premiers affichés` : '';
     $('stats').textContent = `${d.total} passage(s) dans ${d.videos} vidéo(s)${plus}`;
-    $('resultats').innerHTML = d.resultats.length ? d.resultats.map(r => `
-      <div class="res">
+    derniers = d.resultats.map(r => ({ ...r, avant: 2, apres: 2, htmlTrouve: r.contexte.find(c => c.trouve).html }));
+    $('resultats').innerHTML = d.resultats.length ? derniers.map((r, i) => `
+      <div class="res" id="res-${i}">
         <div class="res-corps">
         <div class="res-tete">
           <div class="res-titre"><span class="badge">${esc(r.temps)}</span>${esc(r.titre)}</div>
           <div class="actions">
             ${r.lien ? `<a href="${esc(lienHorodate(r.lien, r.temps))}" target="_blank" rel="noopener"><button class="sec">▶ Voir</button></a>` : ''}
+            <button class="sec" onclick="ouvrirLecteur(${i})">📖 Lire la transcription</button>
             <button class="sec" data-copie="${esc(r.titre + ' — ' + r.temps)}" onclick="copier(this.dataset.copie)">📋 Copier</button>
           </div>
         </div>
-        <div class="ctx">${r.contexte.map(c => `<div class="${c.trouve ? 'hit' : ''}"><span class="t">${esc(c.temps)}</span>${c.html}</div>`).join('')}</div>
+        <button class="etendre avant" onclick="etendre(${i}, -1)">▲ Avant</button>
+        <div class="ctx"></div>
+        <button class="etendre apres" onclick="etendre(${i}, 1)">▼ Après</button>
         </div>
         <img class="vignette" hidden alt="" loading="lazy" data-titre="${esc(r.titre)}">
       </div>`).join('') : '<div class="vide">Aucun résultat.</div>';
+    derniers.forEach((_, i) => rendreContexte(i));
     remplirVignettes();
   }, 10);
 }
+
+// ── Contexte élargi et lecture complète ────────────────────────────────────
+let derniers = [];   // résultats affichés, avec le nombre de lignes montrées avant/après
+const PAS = 5;
+
+function ligneHtml(r, j) {
+  const b = base.videos[r.vi][2][j];
+  return `<div class="${j === r.bi ? 'hit' : ''}"${j === r.bi ? ' id="ligne-trouvee"' : ''}><span class="t">${esc(b[0])}</span>${j === r.bi ? r.htmlTrouve : esc(b[1])}</div>`;
+}
+
+function rendreContexte(i) {
+  const r = derniers[i], el = $('res-' + i), n = base.videos[r.vi][2].length;
+  const d = Math.max(0, r.bi - r.avant), f = Math.min(n - 1, r.bi + r.apres);
+  let h = '';
+  for (let j = d; j <= f; j++) h += ligneHtml(r, j);
+  el.querySelector('.ctx').innerHTML = h.replace(' id="ligne-trouvee"', '');
+  el.querySelector('.avant').hidden = d === 0;
+  el.querySelector('.apres').hidden = f === n - 1;
+}
+
+function etendre(i, sens) {
+  const r = derniers[i];
+  if (sens < 0) r.avant += PAS; else r.apres += PAS;
+  rendreContexte(i);
+}
+
+let derniereFocus = null;
+function ouvrirLecteur(i) {
+  const r = derniers[i], n = base.videos[r.vi][2].length;
+  let h = '';
+  for (let j = 0; j < n; j++) h += ligneHtml(r, j);
+  $('lecteur-titre').textContent = r.titre;
+  $('lecteur-texte').innerHTML = h;
+  derniereFocus = document.activeElement;
+  $('lecteur').hidden = false;
+  document.body.style.overflow = 'hidden';
+  $('ligne-trouvee').scrollIntoView({ block: 'center' });
+  $('lecteur').querySelector('button').focus();
+}
+
+function fermerLecteur() {
+  $('lecteur').hidden = true;
+  $('lecteur-texte').innerHTML = '';
+  document.body.style.overflow = '';
+  if (derniereFocus) derniereFocus.focus();
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('lecteur').hidden) fermerLecteur(); });
 
 function copier(texte) {
   navigator.clipboard.writeText(texte).then(() => {

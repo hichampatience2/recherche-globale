@@ -58,6 +58,14 @@ class TestMoteur(unittest.TestCase):
         r = self.idx.rechercher(["coran", "vendredi"], annees=["2019"])
         self.assertEqual(r["total"], 1)
 
+    def test_transcription_et_indice(self):
+        r = self.idx.rechercher(["vendredi"])["resultats"][0]
+        self.assertEqual(r["indice"], 1)
+        blocs = self.idx.transcription(r["titre"])
+        self.assertEqual(len(blocs), 3)
+        self.assertIn("vendredi", blocs[r["indice"]]["texte"])
+        self.assertIsNone(self.idx.transcription("titre inconnu"))
+
     def test_contexte_et_limite(self):
         r = self.idx.rechercher(["e"], limite=1)
         self.assertEqual(len(r["resultats"]), 1)

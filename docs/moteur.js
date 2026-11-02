@@ -112,7 +112,8 @@
       for (let j = Math.max(0, bi - 2); j < Math.min(blocs.length, bi + 3); j++)
         contexte.push({ temps: blocs[j][0], html: j === bi ? surligner(blocs[j][1], spans, accents) : echapper(blocs[j][1]), trouve: j === bi });
       const lien = base.liens[v[0]];
-      resultats.push({ titre: v[0], temps: blocs[bi][0], contexte, lien: typeof lien === 'string' && /^https?:\/\//.test(lien) ? lien : null });
+      resultats.push({ titre: v[0], temps: blocs[bi][0], vi, bi, contexte,
+                       lien: typeof lien === 'string' && /^https?:\/\//.test(lien) ? lien : null });
     }
     return { resultats, total, videos: videos.size };
   }
